@@ -13,8 +13,7 @@ return [
     |
     */
 
-    // 'accepted' => 'The :attribute must be accepted.',
-    'accepted' => ':attributeを承認してください。',
+    'accepted' => 'The :attribute must be accepted.',
     'accepted_if' => 'The :attribute must be accepted when :other is :value.',
     'active_url' => 'The :attribute is not a valid URL.',
     'after' => 'The :attribute must be a date after :date.',
@@ -32,8 +31,7 @@ return [
         'array' => 'The :attribute must have between :min and :max items.',
     ],
     'boolean' => 'The :attribute field must be true or false.',
-    // 'confirmed' => 'The :attribute confirmation does not match.',
-    'confirmed' => ':attributeと確認が一致しません。', // パスワード不一致時のエラー
+    'confirmed' => 'The :attribute confirmation does not match.',
     'current_password' => 'The password is incorrect.',
     'date' => 'The :attribute is not a valid date.',
     'date_equals' => 'The :attribute must be a date equal to :date.',
@@ -95,8 +93,7 @@ return [
     'min' => [
         'numeric' => 'The :attribute must be at least :min.',
         'file' => 'The :attribute must be at least :min kilobytes.',
-        // 'string' => 'The :attribute must be at least :min characters.',
-        'string' => ':attributeは:min文字以上である必要があります。',
+        'string' => 'The :attribute must be at least :min characters.',
         'array' => 'The :attribute must have at least :min items.',
     ],
     'multiple_of' => 'The :attribute must be a multiple of :value.',
@@ -110,8 +107,7 @@ return [
     'prohibited_unless' => 'The :attribute field is prohibited unless :other is in :values.',
     'prohibits' => 'The :attribute field prohibits :other from being present.',
     'regex' => 'The :attribute format is invalid.',
-    // 'required' => 'The :attribute field is required.',
-    'required' => ':attributeは文字列である必要があります。', // 名前がスペースのみの場合など
+    'required' => 'The :attribute field is required.',
     'required_array_keys' => 'The :attribute field must contain entries for: :values.',
     'required_if' => 'The :attribute field is required when :other is :value.',
     'required_unless' => 'The :attribute field is required unless :other is in :values.',
@@ -127,11 +123,9 @@ return [
         'array' => 'The :attribute must contain :size items.',
     ],
     'starts_with' => 'The :attribute must start with one of the following: :values.',
-    // 'string' => 'The :attribute must be a string.',
-    'string' => ':attributeは文字列である必要があります。', // 名前がスペースのみの場合など
+    'string' => 'The :attribute must be a string.',
     'timezone' => 'The :attribute must be a valid timezone.',
-    // 'unique' => 'The :attribute has already been taken.',
-    'unique' => ':attributeはすでに使用されています。', // メアド重複時のエラー
+    'unique' => 'The :attribute has already been taken.',
     'uploaded' => 'The :attribute failed to upload.',
     'url' => 'The :attribute must be a valid URL.',
     'uuid' => 'The :attribute must be a valid UUID.',
@@ -161,6 +155,7 @@ return [
         'password' => [
             'confirmed' => 'パスワードが一致しません。',
         ],
+
     ],
 
     /*

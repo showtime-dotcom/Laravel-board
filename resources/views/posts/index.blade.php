@@ -32,8 +32,7 @@
   <!-- 送信先は同じページ -->
 
   <!-- 新規投稿ボタン -->
-  <p class="pull-right"><a class="btn btn-success" href="/create-form">新規投稿</a></p>
-
+  <p class="pull-right"><a class="btn btn-success" href="{{ route('posts.createForm') }}">新規投稿</a></p>
   <h2 class='page-header'>投稿一覧</h2>
   <!-- <table class='table table-hover'> -->
   <table class='container-fluid'>
@@ -59,11 +58,8 @@
       <td><a class="btn btn-danger" href="/post/{{ $list->id }}/delete" onclick="return confirm('こちらの投稿を削除してもよろしいでしょうか？')">削除</a></td>
     </tr> -->
 
-    <tr style="background-color: gray;">
-      <td class="col" style="color: #f8f9fa;">No.{{ $list->id }}</td>
-    </tr>
     <tr>
-      <td class="col">投稿者名：{{ $list->user_name }}</td>
+      <td class="col">投稿者名：{{ $list->user->name ?? $list->user_name ?? '名無し' }}</td>
     </tr>
     <tr>
       <td>コメント：{{ $list->contents }}</td>
@@ -74,8 +70,16 @@
     <tr>
       <td style="border: none; padding-bottom: 1.2rem; text-align: end;">
         <!-- 更新ボタン -->
-        <a class="btn btn-primary" href="/post/{{ $list->id }}/update-form">編集</a>
-        <a class="btn btn-danger" href="/post/{{ $list->id }}/delete" onclick="return confirm('こちらの投稿を削除してもよろしいでしょうか？')">削除</a>
+        @auth {{-- ユーザーがログインしている場合のみ、以下のコードブロックを実行 --}}
+        {{-- ログインユーザーのID (Auth::id()) と、投稿の作成者ID ($list->user_id) が一致するか確認 --}}
+        @if(Auth::id() == $list->user_id)
+        <a class="btn btn-primary" href="{{ route('posts.edit', $list) }}">編集</a> <!-- 削除ボタン -->
+        <form action="{{ route('posts.destroy', $list) }}" method="POST" style="display:inline;">
+          @csrf {{-- CSRFトークンを含める --}}
+          @method('DELETE') {{-- DELETEメソッドをシミュレートするLaravelディレクティブ --}}
+          <button type="submit" class="btn btn-danger" onclick="return confirm('こちらの投稿を削除してもよろしいでしょうか？')">削除</button>
+        </form> @endif
+        @endauth
       </td>
     </tr>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 // DB接続文(DB::～を使う場合は必ず記載すること)
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,14 @@ use function PHPUnit\Framework\isEmpty;
 class PostsController extends Controller
 
 {
+    // Auth機能をインスタンス化した処理
+    public function __construct()
+
+    {
+        $this->middleware('auth');
+    }
+
+
     //helloメソッドを追加(復習)
     public function hello()
 
@@ -27,32 +36,43 @@ class PostsController extends Controller
         // Request $requestを定義して、$requestからinputの値を取得する
         $Search = $request->input('search');
         // 投稿番号(id)で降順に表示する
-        $query = Post::orderBy('id', 'asc');
-
+        $query = Post::with('user')->orderBy('id', 'asc');
         // 検索フォーム欄が空か半角スパースもしくは全角スペースであれば
-        if (empty($Search) or ($Search === ' ' or $Search === '　')) {
-            // print_r("1");
-            // 投稿を全て表示させる
-            $list = DB::table('posts')->get();
-            // 検索フォームに値が入力されている場合、
-        } else if (!empty($Search)) {
-            // where句を用いて%を用いて「名前」と「コメント」からあいまい検索して一致したものを表示する
-            // var_dump("2");
-            $query = $query->where('user_name', 'LIKE', "%" . $Search . "%")
-                ->orWhere('contents', 'LIKE', "%" . $Search . "%");
-        }
+        if (!empty($Search) && ($Search !== ' ' && $Search !== '　')) {
+            // 検索ワードが空でなく、スペースのみでもない場合
+            // user_name カラムを今後削除するなら、user リレーションを介して検索する
+            $query->where(function ($q) use ($Search) {
+                // contents での検索
+                $q->where('contents', 'LIKE', "%" . $Search . "%");
 
-        // 検索結果を変数listsに入れ、検索キーワードを変数Searchに入れてviewに渡す
-        return view('posts.index', ['lists' => $query->get(), 'Search' => $Search]);
+                // user_id で紐付けたユーザー名での検索 (推奨)
+                // これを使うには Post モデルに user() リレーションが必須です
+                $q->orWhereHas('user', function ($subQuery) use ($Search) {
+                    $subQuery->where('name', 'LIKE', "%" . $Search . "%");
+                });
+
+                // もし一時的に user_name カラムも残して検索対象とするなら
+                // $q->orWhere('user_name', 'LIKE', "%" . $Search . "%");
+            });
+        }
+        // 検索ワードが空、またはスペースのみの場合は、追加でwhere句が適用されないため、
+        // 上記の $query = Post::with('user')->orderBy('id', 'asc'); がそのまま適用され、全件取得となる
+
+        // 検索結果を変数listsに入れ、検索キーワードを変数Searchを入れてviewに渡す
+        // ★修正: 最後に一度だけ get() を呼び出す
+        $lists = $query->get();
+
+        return view('posts.index', ['lists' => $lists, 'Search' => $Search]);
 
         // 以下の$list変数の定義で、データベースの処理を変更する
         // whereを入れて、inputの値を利用する
         // 曖昧検索なので、likeオペレーターを利用する（％を使う）
-        $list = DB::table('posts')->get();
+        // $list = DB::table('posts')->get();
         // 'posts.index'でpostsディレクトリ下にあるindex.blade.phpを呼び出す。
         // 「$list」を変数「lists」として渡す
-        return view('posts.index', ['lists' => $list]);
+        // return view('posts.index', ['lists' => $list]);
     }
+
 
     public function createForm()
     {
@@ -63,57 +83,83 @@ class PostsController extends Controller
     // ブラウザ表示をしない、登録処理だけを行うメソッド(処理終了後、index.blade.phpへ戻す)
     public function create(Request $request)
     {
-        // createForm.blade.phpのinputから受け取った値をそれぞれ変数$name,変数$postに格納し、DBにレコードとして挿入(insert)する
-        $name = $request->input('newName');
-        $post = $request->input('newPost');
-        DB::table('posts')->insert([
-            'user_name' => $name,
-            'contents' => $post
+        // ★★★ バリデーションの追加 ★★★
+        $request->validate([
+            // 'contents' は createForm.blade.php で変更した入力フィールド名
+            'contents' => 'required|string|max:100',
+        ], [
+            'contents.required' => '投稿内容は必須です。',
+            'contents.string' => '投稿内容は文字列で入力してください。',
+            'contents.max' => '投稿内容は100文字以内で入力してください。',
         ]);
-        // ↓変数検証用
-        // var_dump($post);
-        // var_dump($name);
-        return redirect('/index');
+
+        // ★★★ 名前入力欄なし、ログインユーザー名自動登録 ★★★
+        // DB::table('posts')->insert() の代わりに Eloquent ORM を使用
+        Post::create([
+            'user_id' => Auth::id(), // ★ログインユーザーのIDを自動でセット★
+            // user_name カラムは、user_id を使うなら不要になるので、DBから削除を推奨
+            // もし user_name を残すなら、以下のように記述 (ただし非推奨)
+            // 'user_name' => Auth::user()->name, // ログインユーザーの名前を自動でセット
+            'contents' => $request->contents, // createForm.blade.php で 'contents' に変更した前提
+        ]);
+
+        return redirect()->route('posts.index')->with('success', '投稿が作成されました！'); // ルート名でリダイレクト推奨
     }
 
-    // 変種ボタンを押すと編集フォームを表示するメソッド
+
+    // 編集ボタンを押すと編集フォームを表示するメソッド
     public function updateForm($id)
     {
-        // postsテーブルからidが一致するレコードを代入
-        $post = DB::table('posts', 'contents')
-            ->where('id', $id)
-            ->first();
-        // 選んだIDの箇所と同じコメントが入力された編集フォームを返す
-        // var_dump($post);
+        // Eloquent ORM を使用して投稿を取得
+        $post = Post::where('id', $id)->first();
+
+        // ★認可のチェック（課題7関連）★
+        // ログインユーザーが投稿の作成者でない場合、アクセスを拒否
+        if (Auth::id() != $post->user_id) {
+            abort(403, '不正なアクセスです。この投稿を編集する権限がありません。');
+        }
+
         return view('posts.updateForm', ['post' => $post]);
     }
 
+
     // 更新ボタンを押すと更新されるメソッド
-    public function update(Request $request)
+    public function update(Request $request, Post $post) // ★引数にPostモデルを追加（ルートモデルバインディング）★
     {
-        $id = $request->input('id');
-        $up_post = $request->input('upPost');
-        DB::table('posts')
-            ->where('id', $id)
-            ->update(
-                ['contents' => $up_post]
-            );
-        return redirect('/index');
+        // ★ バリデーションの追加 ★
+        $request->validate([
+            'contents' => 'required|string|max:100',
+        ], [
+            'contents.required' => '投稿内容は必須です。',
+            'contents.string' => '投稿内容は文字列で入力してください。',
+            'contents.max' => '投稿内容は100文字以内で入力してください。',
+        ]);
+
+        // ★認可のチェック（課題7関連）★
+        // updateForm と同様に、ログインユーザーが投稿の作成者でない場合、アクセスを拒否
+        if (Auth::id() != $post->user_id) {
+            abort(403, '不正なアクセスです。この投稿を更新する権限がありません。');
+        }
+
+        // Eloquent ORM を使用して更新
+        $post->contents = $request->contents; // フォームの入力フィールド名に合わせる
+        $post->save();
+
+        return redirect()->route('posts.index')->with('success', '投稿が更新されました！');
     }
+
 
     // 削除実行メソッド
-    public function delete($id)
+    public function delete(Post $post) // ★引数を変更★
     {
-        DB::table('posts')
-            ->where('id', $id)
-            ->delete();
-        return redirect('/index');
-    }
+        // 認可チェック: 自分の投稿でなければ削除できないようにする
+        if (Auth::id() != $post->user_id) {
+            return redirect()->route('posts.index')->with('error', '他のユーザーの投稿は削除できません。');
+        }
 
-    // Auth機能をインスタンス化した処理
-    public function __construct()
+        // Eloquent ORM を使用して削除
+        $post->delete();
 
-    {
-        $this->middleware('auth');
+        return redirect()->route('posts.index')->with('success', '投稿が削除されました！');
     }
 }
